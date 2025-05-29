@@ -14,8 +14,6 @@ interface GameState {
   gameMode: 'setup' | 'playing' | 'finished';
   roomId: string;
   winnerTime: number | null;
-  isPaused: boolean;
-  pauseStartTime: number | null;
 }
 
 interface GameSettings {
@@ -32,8 +30,6 @@ interface Player {
   coins: number;
   shells: number;
   completedZones: string[];
-  zoneProgress: Record<string, number>; // 记录每个区域完成的题目数量
-  answeredQuestions: Record<string, number[]>; // 记录每个区域已回答的题目索引
   actionChances: number;
   log: GameLog[];
   achievements: string[];
@@ -74,17 +70,27 @@ interface CollectedCard {
 // ========== 游戏数据 ==========
 const GAME_SETTINGS: GameSettings = {
   maxActionChances: 5,
-  templeRequiredCoins: 40,
-  templeRequiredShells: 15,
+  templeRequiredCoins: 10,
+  templeRequiredShells: 3,
   timeLimit: 30
 };
 
 const PLAYER_COLORS = [
-  { id: 'red', name: '红海龟队', bg: 'bg-red-500', gradient: 'from-red-400 to-red-600', text: 'text-red-600' },
-  { id: 'yellow', name: '黄海龟队', bg: 'bg-yellow-500', gradient: 'from-yellow-400 to-yellow-600', text: 'text-yellow-600' },
-  { id: 'blue', name: '蓝海龟队', bg: 'bg-blue-500', gradient: 'from-blue-400 to-blue-600', text: 'text-blue-600' },
-  { id: 'teal', name: '青海龟队', bg: 'bg-teal-500', gradient: 'from-teal-400 to-teal-600', text: 'text-teal-600' },
-  { id: 'orange', name: '橙海龟队', bg: 'bg-orange-500', gradient: 'from-orange-400 to-orange-600', text: 'text-orange-600' }
+  { id: 'blue', name: '蓝海龟', bg: 'bg-blue-500', gradient: 'from-blue-400 to-blue-600', text: 'text-blue-600' },
+  { id: 'green', name: '绿海龟', bg: 'bg-green-500', gradient: 'from-green-400 to-green-600', text: 'text-green-600' },
+  { id: 'red', name: '红海龟', bg: 'bg-red-500', gradient: 'from-red-400 to-red-600', text: 'text-red-600' },
+  { id: 'purple', name: '紫海龟', bg: 'bg-purple-500', gradient: 'from-purple-400 to-purple-600', text: 'text-purple-600' },
+  { id: 'orange', name: '橙海龟', bg: 'bg-orange-500', gradient: 'from-orange-400 to-orange-600', text: 'text-orange-600' },
+  { id: 'pink', name: '粉海龟', bg: 'bg-pink-500', gradient: 'from-pink-400 to-pink-600', text: 'text-pink-600' },
+  { id: 'teal', name: '青海龟', bg: 'bg-teal-500', gradient: 'from-teal-400 to-teal-600', text: 'text-teal-600' },
+  { id: 'indigo', name: '靛海龟', bg: 'bg-indigo-500', gradient: 'from-indigo-400 to-indigo-600', text: 'text-indigo-600' },
+  { id: 'yellow', name: '黄海龟', bg: 'bg-yellow-500', gradient: 'from-yellow-400 to-yellow-600', text: 'text-yellow-600' },
+  { id: 'lime', name: '青柠海龟', bg: 'bg-lime-500', gradient: 'from-lime-400 to-lime-600', text: 'text-lime-600' },
+  { id: 'cyan', name: '青蓝海龟', bg: 'bg-cyan-500', gradient: 'from-cyan-400 to-cyan-600', text: 'text-cyan-600' },
+  { id: 'amber', name: '琥珀海龟', bg: 'bg-amber-500', gradient: 'from-amber-400 to-amber-600', text: 'text-amber-600' },
+  { id: 'emerald', name: '翡翠海龟', bg: 'bg-emerald-500', gradient: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600' },
+  { id: 'rose', name: '玫瑰海龟', bg: 'bg-rose-500', gradient: 'from-rose-400 to-rose-600', text: 'text-rose-600' },
+  { id: 'violet', name: '紫罗兰海龟', bg: 'bg-violet-500', gradient: 'from-violet-400 to-violet-600', text: 'text-violet-600' }
 ];
 
 const ZONES = [
@@ -135,7 +141,7 @@ const ZONES = [
   }
 ];
 
-// 海洋知识问题 - 每个区域15道题
+// 50个海洋知识问题
 const QUESTIONS: Record<string, Question[]> = {
   coral: [
     {
@@ -207,255 +213,6 @@ const QUESTIONS: Record<string, Question[]> = {
       answer: 1,
       explanation: "珊瑚虫主要以浮游生物为食，同时也依靠体内共生藻类的光合作用。",
       difficulty: 'hard'
-    },
-    {
-      question: "珊瑚礁能承受的最高水温是多少？",
-      options: ["25℃", "30℃", "35℃", "40℃"],
-      answer: 1,
-      explanation: "珊瑚礁通常在水温超过30℃时开始出现白化现象。",
-      difficulty: 'medium'
-    },
-    {
-      question: "硬珊瑚和软珊瑚的主要区别是什么？",
-      options: ["颜色", "大小", "骨骼结构", "栖息深度"],
-      answer: 2,
-      explanation: "硬珊瑚有钙质骨骼，软珊瑚则没有坚硬的骨骼结构。",
-      difficulty: 'hard'
-    },
-    {
-      question: "珊瑚产卵通常发生在什么时候？",
-      options: ["白天", "晚上", "四季皆有", "只在春天"],
-      answer: 1,
-      explanation: "大多数珊瑚选择在夜晚同步产卵，形成壮观的产卵现象。",
-      difficulty: 'medium'
-    },
-    {
-      question: "造礁珊瑚需要什么条件生长？",
-      options: ["深海", "浅海阳光", "寒冷水域", "污染水域"],
-      answer: 1,
-      explanation: "造礁珊瑚需要浅海阳光充足的环境，以供共生藻类进行光合作用。",
-      difficulty: 'easy'
-    },
-    {
-      question: "珊瑚礁的形成需要多长时间？",
-      options: ["几年", "几十年", "几百年", "几千年"],
-      answer: 3,
-      explanation: "珊瑚礁的形成是一个极其缓慢的过程，通常需要几千年甚至更长时间。",
-      difficulty: 'hard'
-    }
-  ],
-  volcano: [
-    {
-      question: "海底火山喷发会形成什么？",
-      options: ["新的岛屿", "海啸", "暖流", "以上都可能"],
-      answer: 3,
-      explanation: "海底火山喷发可能形成新岛屿、引发海啸或产生暖流！",
-      difficulty: 'hard'
-    },
-    {
-      question: "地球上有多少座活火山？",
-      options: ["约500座", "约1500座", "约3000座", "约5000座"],
-      answer: 1,
-      explanation: "全球约有1500座活火山，其中很多位于海底。",
-      difficulty: 'medium'
-    },
-    {
-      question: "火山温泉的水温通常是多少？",
-      options: ["20-30℃", "40-60℃", "70-90℃", "100℃以上"],
-      answer: 2,
-      explanation: "火山温泉的水温通常在70-90℃之间，含有丰富的矿物质！",
-      difficulty: 'easy'
-    },
-    {
-      question: "环太平洋火山带被称为什么？",
-      options: ["火环", "火圈", "火山链", "火山带"],
-      answer: 0,
-      explanation: "环太平洋火山带被称为'火环'，集中了全球大部分的火山和地震。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海底火山热泉的温度可以达到多高？",
-      options: ["100℃", "200℃", "300℃", "400℃以上"],
-      answer: 3,
-      explanation: "海底火山热泉的温度可以超过400℃，是地球上最极端的环境之一。",
-      difficulty: 'hard'
-    },
-    {
-      question: "火山岩浆的主要成分是什么？",
-      options: ["硅酸盐", "碳酸盐", "硫酸盐", "氯化物"],
-      answer: 0,
-      explanation: "火山岩浆主要由硅酸盐矿物组成，含有不同比例的硅、铝、铁、镁等元素。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海底火山形成岛屿需要多长时间？",
-      options: ["几年", "几十年", "几千年", "几万年"],
-      answer: 3,
-      explanation: "海底火山形成岛屿通常需要几万年甚至更长时间的持续喷发和堆积。",
-      difficulty: 'hard'
-    },
-    {
-      question: "夏威夷群岛是如何形成的？",
-      options: ["板块碰撞", "海底扩张", "热点火山", "地壳断裂"],
-      answer: 2,
-      explanation: "夏威夷群岛是由热点火山活动形成的，随着太平洋板块的移动而形成岛链。",
-      difficulty: 'hard'
-    },
-    {
-      question: "火山喷发对海洋生物有什么影响？",
-      options: ["都是有害的", "都是有益的", "既有害也有益", "没有影响"],
-      answer: 2,
-      explanation: "火山喷发对海洋生物既有害也有益，可能造成死亡但也会带来营养物质。",
-      difficulty: 'medium'
-    },
-    {
-      question: "世界上最活跃的海底火山在哪里？",
-      options: ["大西洋", "太平洋", "印度洋", "北冰洋"],
-      answer: 1,
-      explanation: "太平洋拥有世界上最活跃的海底火山，特别是在环太平洋火山带。",
-      difficulty: 'easy'
-    },
-    {
-      question: "火山灰对海洋的影响是什么？",
-      options: ["增加营养", "降低温度", "改变酸碱度", "以上都是"],
-      answer: 3,
-      explanation: "火山灰会为海洋带来营养物质，同时可能影响海水温度和酸碱度。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海底火山的能量来源是什么？",
-      options: ["太阳能", "地热能", "潮汐能", "化学能"],
-      answer: 1,
-      explanation: "海底火山的能量主要来源于地球内部的地热能。",
-      difficulty: 'easy'
-    },
-    {
-      question: "火山喷发的类型有几种？",
-      options: ["2种", "3种", "4种", "5种以上"],
-      answer: 3,
-      explanation: "火山喷发有多种类型，包括爆炸式、溢流式、火山碎屑流等多种形式。",
-      difficulty: 'hard'
-    },
-    {
-      question: "火山口湖是如何形成的？",
-      options: ["雨水积累", "地下水涌出", "火山口积水", "人工开凿"],
-      answer: 2,
-      explanation: "火山口湖是由火山喷发后形成的火山口积水而成。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海底热泉周围的生物依靠什么生存？",
-      options: ["阳光", "化学合成", "其他生物", "火山热量"],
-      answer: 1,
-      explanation: "海底热泉周围的生物主要依靠化学合成作用获得能量，形成独特的生态系统。",
-      difficulty: 'hard'
-    }
-  ],
-  kelp: [
-    {
-      question: "海藻通过什么过程产生氧气？",
-      options: ["呼吸作用", "光合作用", "消化作用", "分解作用"],
-      answer: 1,
-      explanation: "海藻和陆地植物一样，通过光合作用产生氧气！",
-      difficulty: 'easy'
-    },
-    {
-      question: "海带属于什么类型的生物？",
-      options: ["植物", "动物", "真菌", "藻类"],
-      answer: 3,
-      explanation: "海带实际上是大型藻类，不是真正的植物哦！",
-      difficulty: 'medium'
-    },
-    {
-      question: "海藻森林主要分布在什么海域？",
-      options: ["热带海域", "温带海域", "极地海域", "所有海域"],
-      answer: 1,
-      explanation: "大型海藻森林主要分布在温带海域，那里的环境最适合它们生长！",
-      difficulty: 'hard'
-    },
-    {
-      question: "世界上最大的海藻是什么？",
-      options: ["紫菜", "海带", "巨藻", "裙带菜"],
-      answer: 2,
-      explanation: "巨藻是世界上最大的海藻，可以长达60米以上。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海藻的主要营养价值是什么？",
-      options: ["蛋白质", "碳水化合物", "碘元素", "维生素C"],
-      answer: 2,
-      explanation: "海藻富含碘元素，对人体甲状腺功能很重要。",
-      difficulty: 'easy'
-    },
-    {
-      question: "海藻森林为海洋生物提供什么？",
-      options: ["食物", "栖息地", "保护", "以上都是"],
-      answer: 3,
-      explanation: "海藻森林为海洋生物提供食物来源、栖息地和保护场所。",
-      difficulty: 'easy'
-    },
-    {
-      question: "海藻是如何固定在海底的？",
-      options: ["根系", "固着器", "吸盘", "胶质"],
-      answer: 1,
-      explanation: "海藻通过固着器（类似根部的结构）固定在海底岩石上。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海藻一天能生长多少？",
-      options: ["几毫米", "几厘米", "几十厘米", "几米"],
-      answer: 2,
-      explanation: "某些大型海藻如巨藻一天可以生长几十厘米，是生长最快的植物之一。",
-      difficulty: 'hard'
-    },
-    {
-      question: "海藻的繁殖方式有哪些？",
-      options: ["无性繁殖", "有性繁殖", "孢子繁殖", "以上都是"],
-      answer: 3,
-      explanation: "海藻具有多种繁殖方式，包括无性繁殖、有性繁殖和孢子繁殖。",
-      difficulty: 'medium'
-    },
-    {
-      question: "为什么海藻大多呈现绿色或褐色？",
-      options: ["叶绿素", "类胡萝卜素", "藻胆蛋白", "以上都是"],
-      answer: 3,
-      explanation: "海藻含有多种色素，包括叶绿素、类胡萝卜素和藻胆蛋白等。",
-      difficulty: 'hard'
-    },
-    {
-      question: "海藻对环境有什么积极作用？",
-      options: ["吸收二氧化碳", "产生氧气", "净化海水", "以上都是"],
-      answer: 3,
-      explanation: "海藻通过光合作用吸收二氧化碳、产生氧气，同时还能净化海水环境。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海藻的叶片有什么特殊结构？",
-      options: ["气囊", "叶脉", "孔洞", "纤毛"],
-      answer: 0,
-      explanation: "许多海藻的叶片有气囊结构，帮助它们在水中保持浮力。",
-      difficulty: 'hard'
-    },
-    {
-      question: "海藻迷宫中最常见的海藻类型是什么？",
-      options: ["红藻", "绿藻", "褐藻", "蓝藻"],
-      answer: 2,
-      explanation: "褐藻是海藻森林中最常见的类型，包括海带、巨藻等大型藻类。",
-      difficulty: 'medium'
-    },
-    {
-      question: "海藻如何适应海水环境？",
-      options: ["细胞壁增厚", "渗透压调节", "盐分排出", "以上都是"],
-      answer: 3,
-      explanation: "海藻通过多种方式适应海水的高盐环境，包括调节渗透压等机制。",
-      difficulty: 'hard'
-    },
-    {
-      question: "海藻森林的生态价值主要体现在什么方面？",
-      options: ["碳汇作用", "生物多样性", "渔业资源", "以上都是"],
-      answer: 3,
-      explanation: "海藻森林具有重要的生态价值，包括固碳、维护生物多样性和支持渔业等。",
-      difficulty: 'easy'
     }
   ],
   cave: [
@@ -530,6 +287,78 @@ const QUESTIONS: Record<string, Question[]> = {
       difficulty: 'easy'
     }
   ],
+  kelp: [
+    {
+      question: "海藻通过什么过程产生氧气？",
+      options: ["呼吸作用", "光合作用", "消化作用", "分解作用"],
+      answer: 1,
+      explanation: "海藻和陆地植物一样，通过光合作用产生氧气！",
+      difficulty: 'easy'
+    },
+    {
+      question: "海带属于什么类型的生物？",
+      options: ["植物", "动物", "真菌", "藻类"],
+      answer: 3,
+      explanation: "海带实际上是大型藻类，不是真正的植物哦！",
+      difficulty: 'medium'
+    },
+    {
+      question: "海藻森林主要分布在什么海域？",
+      options: ["热带海域", "温带海域", "极地海域", "所有海域"],
+      answer: 1,
+      explanation: "大型海藻森林主要分布在温带海域，那里的环境最适合它们生长！",
+      difficulty: 'hard'
+    },
+    {
+      question: "世界上最大的海藻是什么？",
+      options: ["紫菜", "海带", "巨藻", "裙带菜"],
+      answer: 2,
+      explanation: "巨藻是世界上最大的海藻，可以长达60米以上。",
+      difficulty: 'medium'
+    },
+    {
+      question: "海藻的主要营养价值是什么？",
+      options: ["蛋白质", "碳水化合物", "碘元素", "维生素C"],
+      answer: 2,
+      explanation: "海藻富含碘元素，对人体甲状腺功能很重要。",
+      difficulty: 'easy'
+    },
+    {
+      question: "海藻森林为海洋生物提供什么？",
+      options: ["食物", "栖息地", "保护", "以上都是"],
+      answer: 3,
+      explanation: "海藻森林为海洋生物提供食物来源、栖息地和保护场所。",
+      difficulty: 'easy'
+    },
+    {
+      question: "海藻是如何固定在海底的？",
+      options: ["根系", "固着器", "吸盘", "胶质"],
+      answer: 1,
+      explanation: "海藻通过固着器（类似根部的结构）固定在海底岩石上。",
+      difficulty: 'medium'
+    },
+    {
+      question: "海藻一天能生长多少？",
+      options: ["几毫米", "几厘米", "几十厘米", "几米"],
+      answer: 2,
+      explanation: "某些大型海藻如巨藻一天可以生长几十厘米，是生长最快的植物之一。",
+      difficulty: 'hard'
+    },
+    {
+      question: "海藻的繁殖方式有哪些？",
+      options: ["无性繁殖", "有性繁殖", "孢子繁殖", "以上都是"],
+      answer: 3,
+      explanation: "海藻具有多种繁殖方式，包括无性繁殖、有性繁殖和孢子繁殖。",
+      difficulty: 'medium'
+    },
+    {
+      question: "为什么海藻大多呈现绿色或褐色？",
+      options: ["叶绿素", "类胡萝卜素", "藻胆蛋白", "以上都是"],
+      answer: 3,
+      explanation: "海藻含有多种色素，包括叶绿素、类胡萝卜素和藻胆蛋白等。",
+      difficulty: 'hard'
+    }
+  ],
   shipwreck: [
     {
       question: "海龟可以在水下憋气多长时间？",
@@ -600,6 +429,78 @@ const QUESTIONS: Record<string, Question[]> = {
       answer: 1,
       explanation: "海龟是古老的物种，从约2亿年前就已经存在了。",
       difficulty: 'hard'
+    }
+  ],
+  volcano: [
+    {
+      question: "海底火山喷发会形成什么？",
+      options: ["新的岛屿", "海啸", "暖流", "以上都可能"],
+      answer: 3,
+      explanation: "海底火山喷发可能形成新岛屿、引发海啸或产生暖流！",
+      difficulty: 'hard'
+    },
+    {
+      question: "地球上有多少座活火山？",
+      options: ["约500座", "约1500座", "约3000座", "约5000座"],
+      answer: 1,
+      explanation: "全球约有1500座活火山，其中很多位于海底。",
+      difficulty: 'medium'
+    },
+    {
+      question: "火山温泉的水温通常是多少？",
+      options: ["20-30℃", "40-60℃", "70-90℃", "100℃以上"],
+      answer: 2,
+      explanation: "火山温泉的水温通常在70-90℃之间，含有丰富的矿物质！",
+      difficulty: 'easy'
+    },
+    {
+      question: "环太平洋火山带被称为什么？",
+      options: ["火环", "火圈", "火山链", "火山带"],
+      answer: 0,
+      explanation: "环太平洋火山带被称为'火环'，集中了全球大部分的火山和地震。",
+      difficulty: 'medium'
+    },
+    {
+      question: "海底火山热泉的温度可以达到多高？",
+      options: ["100℃", "200℃", "300℃", "400℃以上"],
+      answer: 3,
+      explanation: "海底火山热泉的温度可以超过400℃，是地球上最极端的环境之一。",
+      difficulty: 'hard'
+    },
+    {
+      question: "火山岩浆的主要成分是什么？",
+      options: ["硅酸盐", "碳酸盐", "硫酸盐", "氯化物"],
+      answer: 0,
+      explanation: "火山岩浆主要由硅酸盐矿物组成，含有不同比例的硅、铝、铁、镁等元素。",
+      difficulty: 'medium'
+    },
+    {
+      question: "海底火山形成岛屿需要多长时间？",
+      options: ["几年", "几十年", "几千年", "几万年"],
+      answer: 3,
+      explanation: "海底火山形成岛屿通常需要几万年甚至更长时间的持续喷发和堆积。",
+      difficulty: 'hard'
+    },
+    {
+      question: "夏威夷群岛是如何形成的？",
+      options: ["板块碰撞", "海底扩张", "热点火山", "地壳断裂"],
+      answer: 2,
+      explanation: "夏威夷群岛是由热点火山活动形成的，随着太平洋板块的移动而形成岛链。",
+      difficulty: 'hard'
+    },
+    {
+      question: "火山喷发对海洋生物有什么影响？",
+      options: ["都是有害的", "都是有益的", "既有害也有益", "没有影响"],
+      answer: 2,
+      explanation: "火山喷发对海洋生物既有害也有益，可能造成死亡但也会带来营养物质。",
+      difficulty: 'medium'
+    },
+    {
+      question: "世界上最活跃的海底火山在哪里？",
+      options: ["大西洋", "太平洋", "印度洋", "北冰洋"],
+      answer: 1,
+      explanation: "太平洋拥有世界上最活跃的海底火山，特别是在环太平洋火山带。",
+      difficulty: 'easy'
     }
   ]
 };
@@ -743,7 +644,7 @@ const formatTime = (milliseconds: number): string => {
 const GameContext = createContext<{
   gameState: GameState;
   updateGameState: (updates: Partial<GameState>) => void;
-  addPlayer: (player: Omit<Player, 'id' | 'totalScore' | 'lastActive' | 'isWinner' | 'winTime' | 'collectedCards' | 'zoneProgress' | 'answeredQuestions'>) => void;
+  addPlayer: (player: Omit<Player, 'id' | 'totalScore' | 'lastActive' | 'isWinner' | 'winTime' | 'collectedCards'>) => void;
   updatePlayer: (playerId: string, updates: Partial<Player>) => void;
   addLog: (playerId: string, log: Omit<GameLog, 'timestamp'>) => void;
   addCard: (playerId: string, card: Omit<CollectedCard, 'timestamp'>) => void;
@@ -764,9 +665,7 @@ const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     gameSettings: GAME_SETTINGS,
     gameMode: 'setup',
     roomId: `room_${Date.now()}`,
-    winnerTime: null,
-    isPaused: false,
-    pauseStartTime: null
+    winnerTime: null
   });
 
   useEffect(() => {
@@ -777,7 +676,7 @@ const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setGameState(prev => ({ ...prev, ...updates }));
   };
 
-  const addPlayer = (playerData: Omit<Player, 'id' | 'totalScore' | 'lastActive' | 'isWinner' | 'winTime' | 'collectedCards' | 'zoneProgress' | 'answeredQuestions'>) => {
+  const addPlayer = (playerData: Omit<Player, 'id' | 'totalScore' | 'lastActive' | 'isWinner' | 'winTime' | 'collectedCards'>) => {
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newPlayer: Player = {
       ...playerData,
@@ -785,8 +684,6 @@ const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       coins: 0,
       shells: 0,
       completedZones: [],
-      zoneProgress: {},
-      answeredQuestions: {},
       actionChances: GAME_SETTINGS.maxActionChances,
       log: [],
       achievements: [],
@@ -883,9 +780,7 @@ const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       gameSettings: GAME_SETTINGS,
       gameMode: 'setup',
       roomId: `room_${Date.now()}`,
-      winnerTime: null,
-      isPaused: false,
-      pauseStartTime: null
+      winnerTime: null
     });
   };
 
@@ -944,82 +839,6 @@ const FloatingParticles: React.FC = () => {
   );
 };
 
-const PauseButton: React.FC = () => {
-  const { gameState, updateGameState, playSound } = useGame();
-  
-  const handlePause = () => {
-    if (gameState.isPaused) {
-      // 恢复游戏
-      const pauseDuration = Date.now() - (gameState.pauseStartTime || 0);
-      updateGameState({ 
-        isPaused: false, 
-        pauseStartTime: null,
-        gameStartTime: gameState.gameStartTime + pauseDuration
-      });
-      playSound('click');
-    } else {
-      // 暂停游戏
-      updateGameState({ 
-        isPaused: true, 
-        pauseStartTime: Date.now() 
-      });
-      playSound('warning');
-    }
-  };
-
-  if (gameState.currentPage === 'home' || gameState.currentPage === 'setup') {
-    return null;
-  }
-
-  return (
-    <motion.button
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.9 }}
-      onClick={handlePause}
-      className={`fixed top-20 right-4 z-50 backdrop-blur p-3 rounded-full shadow-lg transition-all ${
-        gameState.isPaused ? 'bg-green-500/80 hover:bg-green-500/90' : 'bg-yellow-500/80 hover:bg-yellow-500/90'
-      }`}
-    >
-      <span className="text-xl text-white">
-        {gameState.isPaused ? '▶️' : '⏸️'}
-      </span>
-    </motion.button>
-  );
-};
-
-const PausedOverlay: React.FC = () => {
-  const { gameState } = useGame();
-  
-  if (!gameState.isPaused) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50"
-    >
-      <div className="bg-white/95 backdrop-blur rounded-3xl p-8 max-w-md w-full mx-4 text-center shadow-2xl">
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-6xl mb-4"
-        >
-          ⏸️
-        </motion.div>
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">游戏已暂停</h2>
-        <p className="text-gray-600 mb-6">
-          点击右上角的播放按钮恢复游戏
-        </p>
-        <div className="bg-yellow-100 p-4 rounded-xl border border-yellow-300">
-          <p className="text-yellow-700 text-sm">
-            ⚠️ 暂停期间时间计时已停止
-          </p>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
 const SoundToggle: React.FC = () => {
   const { gameState, updateGameState, playSound } = useGame();
   
@@ -1044,22 +863,10 @@ const GameTimer: React.FC = () => {
   const { gameState, playSound } = useGame();
   const [timeLeft, setTimeLeft] = useState(0);
   const [hasWarned, setHasWarned] = useState(false);
-  const [totalPauseTime, setTotalPauseTime] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      if (gameState.isPaused) {
-        // 游戏暂停时不更新计时器
-        return;
-      }
-      
-      // 计算总暂停时间
-      let currentPauseTime = totalPauseTime;
-      if (gameState.pauseStartTime) {
-        currentPauseTime += Date.now() - gameState.pauseStartTime;
-      }
-      
-      const elapsed = Date.now() - gameState.gameStartTime - currentPauseTime;
+      const elapsed = Date.now() - gameState.gameStartTime;
       const remaining = Math.max(0, gameState.gameSettings.timeLimit * 60 * 1000 - elapsed);
       setTimeLeft(remaining);
       
@@ -1076,14 +883,7 @@ const GameTimer: React.FC = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameState.gameStartTime, gameState.gameSettings.timeLimit, gameState.isPaused, gameState.pauseStartTime, hasWarned, playSound, totalPauseTime]);
-
-  // 当游戏从暂停恢复时，更新总暂停时间
-  useEffect(() => {
-    if (!gameState.isPaused && gameState.pauseStartTime) {
-      setTotalPauseTime(prev => prev + (Date.now() - gameState.pauseStartTime));
-    }
-  }, [gameState.isPaused, gameState.pauseStartTime]);
+  }, [gameState.gameStartTime, gameState.gameSettings.timeLimit, hasWarned, playSound]);
 
   if (gameState.currentPage === 'home' || gameState.currentPage === 'setup') {
     return null;
@@ -1102,16 +902,13 @@ const GameTimer: React.FC = () => {
       className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-white/90 backdrop-blur px-6 py-3 rounded-full shadow-lg"
     >
       <div className="flex items-center gap-2">
-        <span className="text-lg">{gameState.isPaused ? '⏸️' : '⏰'}</span>
+        <span className="text-lg">⏰</span>
         <span className={`font-mono font-bold text-lg ${
           timeLeft < 60000 ? 'text-red-500' : 
           timeLeft < 300000 ? 'text-orange-500' : 'text-gray-700'
         }`}>
           {minutes.toString().padStart(2, '0')}:{seconds.toString().padStart(2, '0')}
         </span>
-        {gameState.isPaused && (
-          <span className="text-yellow-600 font-bold ml-2">已暂停</span>
-        )}
         {timeLeft === 0 && (
           <span className="text-red-500 font-bold ml-2">时间到！</span>
         )}
@@ -1126,25 +923,14 @@ const Leaderboard: React.FC = () => {
   const sortedPlayers = useMemo(() => {
     const players = Object.values(gameState.players);
     return players.sort((a, b) => {
-      // 如果有获胜者，获胜者排第一
+      // 如果有获胜者，获胜者排第一，然后按获胜时间排序
       if (a.isWinner && !b.isWinner) return -1;
       if (!a.isWinner && b.isWinner) return 1;
-      
-      // 如果都是获胜者，按完成时间排序（最短时间优先）
       if (a.isWinner && b.isWinner) {
-        if ((a.winTime || 0) !== (b.winTime || 0)) {
-          return (a.winTime || 0) - (b.winTime || 0);
-        }
-        // 时间相同，按分数排序
-        return b.totalScore - a.totalScore;
+        return (a.winTime || 0) - (b.winTime || 0);
       }
-      
-      // 如果都没获胜，先按总分排序，再按时间排序
-      if (a.totalScore !== b.totalScore) {
-        return b.totalScore - a.totalScore;
-      }
-      // 分数相同时，按最后活跃时间排序（更早完成高分的排前面）
-      return a.lastActive - b.lastActive;
+      // 如果都没获胜，按总分排序
+      return b.totalScore - a.totalScore;
     }).slice(0, 8);
   }, [gameState.players]);
 
@@ -1340,11 +1126,10 @@ const HomePage: React.FC = () => {
         
         <h1 className="text-5xl font-bold text-blue-800 mb-4">海龟岛冒险</h1>
         <div className="text-lg text-gray-600 mb-8 space-y-2">
-          <p>🎯 <strong>多人竞赛模式</strong> - 5个队伍，每队3人，总计15人同时竞争！</p>
-          <p>🏆 第一个进入神殿并连续答对3题的玩家获胜，按时间+分数排名</p>
+          <p>🎯 <strong>多人竞赛模式</strong> - 最多15人同时竞争，谁最快获胜！</p>
+          <p>🏆 第一个进入神殿并答对问题的玩家获胜，其他玩家可继续游戏</p>
           <p>⚡ 限时{GAME_SETTINGS.timeLimit}分钟，快速思考，勇敢探索</p>
           <p>🎴 收集50+种不同的海洋卡牌，学习丰富的海洋知识</p>
-          <p>📚 完成特定区域挑战：珊瑚礁(贝壳)、火山+海藻(金币)、洞穴+沉船(卡牌)</p>
         </div>
         
         <div className="grid md:grid-cols-4 gap-4 mb-8">
@@ -1366,7 +1151,7 @@ const HomePage: React.FC = () => {
           <div className="bg-gradient-to-r from-red-100 to-orange-100 p-4 rounded-xl">
             <div className="text-3xl mb-2">🏛️</div>
             <div className="font-semibold text-red-700">神殿挑战</div>
-            <div className="text-xs text-gray-600 mt-1">需要40币+15贝壳，答对3题</div>
+            <div className="text-xs text-gray-600 mt-1">需要10币+3贝壳</div>
           </div>
         </div>
 
@@ -1388,9 +1173,9 @@ const HomePage: React.FC = () => {
         </motion.button>
         
         <div className="mt-6 text-sm text-gray-500">
-          <p>💡 提示：5个队伍每队最多3人，总计15人同时游戏</p>
+          <p>💡 提示：支持最多15人同时游戏，每人使用独立设备</p>
           <p>🎮 游戏时长：{GAME_SETTINGS.timeLimit}分钟</p>
-          <p>🌊 珊瑚礁、火山、海藻各15题，神秘海洞、沉船为卡牌区域！</p>
+          <p>🌊 50+海洋知识问题，4种稀有度卡牌等你收集！</p>
         </div>
       </div>
     </div>
@@ -1400,13 +1185,12 @@ const HomePage: React.FC = () => {
 const SetupPage: React.FC = () => {
   const { gameState, addPlayer, updateGameState, setCurrentPlayer, playSound } = useGame();
   const [playerName, setPlayerName] = useState('');
-  const [selectedColor, setSelectedColor] = useState('red');
+  const [selectedColor, setSelectedColor] = useState('blue');
   const [isJoining, setIsJoining] = useState(false);
 
-  const availableColors = PLAYER_COLORS.filter(color => {
-    const playersWithColor = Object.values(gameState.players).filter(player => player.color === color.id);
-    return playersWithColor.length < 3; // 每队最多3人
-  });
+  const availableColors = PLAYER_COLORS.filter(color => 
+    !Object.values(gameState.players).some(player => player.color === color.id)
+  );
 
   const handleJoinGame = () => {
     if (playerName.trim()) {
@@ -1446,7 +1230,7 @@ const SetupPage: React.FC = () => {
             🏴‍☠️
           </motion.div>
           <h2 className="text-4xl font-bold text-gray-800 mb-2">多人竞赛大厅</h2>
-          <p className="text-gray-600">5个队伍，每队最多3人，总计15人竞争！</p>
+          <p className="text-gray-600">最多15人同时加入，谁最快获胜？</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -1469,41 +1253,33 @@ const SetupPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">选择你的海龟队伍</label>
-              <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto">
-                {availableColors.map(color => {
-                  const teamCount = Object.values(gameState.players).filter(p => p.color === color.id).length;
-                  return (
-                    <motion.button
-                      key={color.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => {
-                        setSelectedColor(color.id);
-                        playSound('click');
-                      }}
-                      disabled={isJoining}
-                      className={`p-4 rounded-xl border-2 transition-all font-semibold ${
-                        selectedColor === color.id 
-                          ? `border-${color.id}-500 bg-gradient-to-r ${color.gradient} text-white shadow-lg` 
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl">🐢</span>
-                          <span>{color.name}</span>
-                        </div>
-                        <span className="text-sm opacity-75">
-                          {teamCount}/3
-                        </span>
-                      </div>
-                    </motion.button>
-                  );
-                })}
+              <label className="block text-sm font-medium text-gray-700 mb-3">选择你的海龟颜色</label>
+              <div className="grid grid-cols-3 gap-3 max-h-64 overflow-y-auto">
+                {availableColors.map(color => (
+                  <motion.button
+                    key={color.id}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      setSelectedColor(color.id);
+                      playSound('click');
+                    }}
+                    disabled={isJoining}
+                    className={`p-3 rounded-xl border-2 transition-all font-semibold text-sm ${
+                      selectedColor === color.id 
+                        ? `border-${color.id}-500 bg-gradient-to-r ${color.gradient} text-white shadow-lg` 
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-1">
+                      <span className="text-xl">🐢</span>
+                      <span className="text-xs">{color.name}</span>
+                    </div>
+                  </motion.button>
+                ))}
               </div>
               {availableColors.length === 0 && (
-                <p className="text-red-500 text-sm mt-2">所有队伍已满，请等待其他玩家开始游戏</p>
+                <p className="text-red-500 text-sm mt-2">所有颜色已被选择，请等待其他玩家开始游戏</p>
               )}
             </div>
 
@@ -1535,42 +1311,31 @@ const SetupPage: React.FC = () => {
           {/* 当前玩家列表 */}
           <div className="space-y-4">
             <h3 className="text-2xl font-bold text-gray-800 mb-4">
-              👥 当前玩家 ({players.length}/15)
+              👥 当前玩家 ({players.length}/{PLAYER_COLORS.length})
             </h3>
             
-            {/* 按队伍分组显示 */}
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {PLAYER_COLORS.map(color => {
-                const teamPlayers = players.filter(player => player.color === color.id);
-                if (teamPlayers.length === 0) return null;
-                
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {players.map((player, index) => {
+                const color = PLAYER_COLORS.find(c => c.id === player.color);
                 return (
-                  <div key={color.id} className="space-y-2">
-                    <div className={`flex items-center gap-2 p-2 rounded-lg bg-gradient-to-r ${color.gradient} text-white`}>
-                      <span className="text-lg">🐢</span>
-                      <span className="font-bold">{color.name}</span>
-                      <span className="text-sm opacity-80">({teamPlayers.length}/3)</span>
+                  <motion.div
+                    key={player.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center gap-4 p-4 bg-white rounded-xl border-2 border-gray-200 shadow-sm"
+                  >
+                    <div className={`w-12 h-12 rounded-full bg-gradient-to-r ${color?.gradient} flex items-center justify-center text-white text-xl font-bold`}>
+                      🐢
                     </div>
-                    {teamPlayers.map((player, index) => (
-                      <motion.div
-                        key={player.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                        className="flex items-center gap-4 p-3 bg-white rounded-lg border border-gray-200 shadow-sm ml-4"
-                      >
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-r ${color.gradient} flex items-center justify-center text-white text-sm font-bold`}>
-                          🐢
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-800">{player.name}</div>
-                        </div>
-                        <div className="text-green-500 text-sm font-medium">
-                          ✓ 已加入
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-800">{player.name}</div>
+                      <div className="text-sm text-gray-500">{color?.name}</div>
+                    </div>
+                    <div className="text-green-500 text-sm font-medium">
+                      ✓ 已加入
+                    </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -1583,7 +1348,7 @@ const SetupPage: React.FC = () => {
                     已有 {players.length} 位玩家加入！
                   </div>
                   <div className="text-sm text-gray-600">
-                    5个队伍，每队最多3人，总共最多15人参赛
+                    最多可容纳{PLAYER_COLORS.length}人，点击"开始竞赛"开始游戏
                   </div>
                 </div>
               </div>
@@ -1669,7 +1434,7 @@ const MapPage: React.FC = () => {
   if (!currentPlayer) return null;
 
   const playerColor = PLAYER_COLORS.find(c => c.id === currentPlayer.color);
-  const canEnterTemple = currentPlayer.coins >= 40 && currentPlayer.shells >= 15;
+  const canEnterTemple = currentPlayer.coins >= 10 && currentPlayer.shells >= 3;
   
   // 检查时间是否已到
   const timeLeft = Math.max(0, gameState.gameSettings.timeLimit * 60 * 1000 - (Date.now() - gameState.gameStartTime));
@@ -1680,8 +1445,6 @@ const MapPage: React.FC = () => {
       <FloatingParticles />
       <GameTimer />
       <SoundToggle />
-      <PauseButton />
-      <PausedOverlay />
       <Leaderboard />
 
       {/* 玩家信息侧边栏 */}
@@ -1778,34 +1541,39 @@ const MapPage: React.FC = () => {
           </div>
         )}
 
-        {/* 区域进度 */}
+        {/* 已完成区域 */}
         <div className="mb-6">
           <h4 className="font-semibold text-sm text-gray-600 mb-3">
-            🗺️ 区域进度
+            🗺️ 已探索区域 ({currentPlayer.completedZones.length}/5)
           </h4>
-          <div className="space-y-2">
-            {ZONES.map(zone => {
-              const isCompleted = currentPlayer.completedZones.includes(zone.id);
-              const progress = currentPlayer.zoneProgress[zone.id] || 0;
-              const maxProgress = ['coral', 'volcano', 'kelp'].includes(zone.id) ? 3 : 1;
-              
-              return (
-                <div key={zone.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <span>{zone.emoji}</span>
-                    <span className="text-xs font-medium">{zone.name}</span>
-                  </div>
-                  <div className="text-xs">
-                    {isCompleted ? (
-                      <span className="text-green-600 font-semibold">✅ 已完成</span>
-                    ) : (
-                      <span className="text-gray-500">{progress}/{maxProgress}</span>
-                    )}
-                  </div>
-                </div>
-              );
+          <div className="flex flex-wrap gap-2">
+            {currentPlayer.completedZones.map(zoneId => {
+              const zone = ZONES.find(z => z.id === zoneId);
+              return zone ? (
+                <motion.span 
+                  key={zoneId}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium"
+                >
+                  {zone.emoji} {zone.name}
+                </motion.span>
+              ) : null;
             })}
           </div>
+          {currentPlayer.completedZones.length === 5 && (
+            <div className="mt-3 p-3 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl border border-yellow-200">
+              <div className="text-center">
+                <div className="text-xl mb-1">🎉</div>
+                <div className="text-sm font-semibold text-orange-600">
+                  全区域探索完成！
+                </div>
+                <div className="text-xs text-gray-600 mt-1">
+                  可以重复挑战获得更多资源
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 切换玩家按钮 */}
@@ -1825,24 +1593,24 @@ const MapPage: React.FC = () => {
 
         {/* 海龟神殿 */}
         <motion.button
-          whileHover={canEnterTemple && !gameEnded && !gameState.isPaused ? { scale: 1.02 } : {}}
-          whileTap={canEnterTemple && !gameEnded && !gameState.isPaused ? { scale: 0.98 } : {}}
+          whileHover={canEnterTemple && !gameEnded ? { scale: 1.02 } : {}}
+          whileTap={canEnterTemple && !gameEnded ? { scale: 0.98 } : {}}
           onClick={() => {
-            if (canEnterTemple && !gameEnded && !gameState.isPaused) {
+            if (canEnterTemple && !gameEnded) {
               playSound('success');
               updateGameState({ currentPage: 'temple' });
             } else {
               playSound('error');
             }
           }}
-          disabled={!canEnterTemple || gameEnded || gameState.isPaused}
+          disabled={!canEnterTemple || gameEnded}
           className={`w-full py-4 rounded-xl font-bold transition-all text-lg relative overflow-hidden ${
-            canEnterTemple && !gameEnded && !gameState.isPaused
+            canEnterTemple && !gameEnded
               ? 'bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white shadow-lg hover:shadow-xl'
               : 'bg-gray-200 text-gray-500 cursor-not-allowed'
           }`}
         >
-          {canEnterTemple && !gameEnded && !gameState.isPaused && (
+          {canEnterTemple && !gameEnded && (
             <motion.div
               className="absolute inset-0 bg-white opacity-20"
               animate={{ x: [-100, 400] }}
@@ -1850,10 +1618,9 @@ const MapPage: React.FC = () => {
             />
           )}
           🏛️ 海龟神殿
-          {(!canEnterTemple || gameEnded || gameState.isPaused) && (
+          {(!canEnterTemple || gameEnded) && (
             <div className="text-xs mt-1">
-              {gameState.isPaused ? '游戏已暂停' :
-               gameEnded ? '游戏已结束' : '需要 40币 + 15贝壳'}
+              {gameEnded ? '游戏已结束' : '需要 10币 + 3贝壳'}
             </div>
           )}
         </motion.button>
@@ -1863,7 +1630,7 @@ const MapPage: React.FC = () => {
       <div className="flex-1 relative h-screen">
         {ZONES.map((zone, index) => {
           const isCompleted = currentPlayer.completedZones.includes(zone.id);
-          const canPlay = currentPlayer.actionChances > 0 && !gameEnded && !currentPlayer.isWinner && !gameState.isPaused;
+          const canPlay = currentPlayer.actionChances > 0 && !gameEnded && !currentPlayer.isWinner;
           
           return (
             <motion.button
@@ -1912,9 +1679,7 @@ const MapPage: React.FC = () => {
                 )}
                 {!canPlay && (
                   <div className="text-red-200 text-xs mt-2">
-                    {gameState.isPaused ? '⏸️ 游戏暂停' :
-                     gameEnded ? '⏰ 游戏结束' : 
-                     currentPlayer.isWinner ? '👑 已获胜' : '⚡ 无行动次数'}
+                    {gameEnded ? '⏰ 游戏结束' : currentPlayer.isWinner ? '👑 已获胜' : '⚡ 无行动次数'}
                   </div>
                 )}
               </div>
@@ -1999,26 +1764,18 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
   const zone = ZONES.find(z => z.id === zoneId);
 
   useEffect(() => {
-    if (!currentPlayer) return;
-    
-    // 根据区域类型确定任务类型
-    if (['coral', 'volcano', 'kelp'].includes(zoneId)) {
-      setTaskType('question');
-      
-      // 选择一个未回答过的问题
+    const types: ('question' | 'card')[] = ['question', 'card'];
+    const randomType = types[Math.floor(Math.random() * types.length)];
+    setTaskType(randomType);
+
+    if (randomType === 'question') {
       const questions = QUESTIONS[zoneId] || [];
-      const answeredQuestions = currentPlayer.answeredQuestions[zoneId] || [];
-      const availableQuestions = questions.filter((_, index) => !answeredQuestions.includes(index));
-      
-      if (availableQuestions.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-        const questionIndex = questions.indexOf(availableQuestions[randomIndex]);
-        setCurrentQuestion({ ...availableQuestions[randomIndex], originalIndex: questionIndex });
+      if (questions.length > 0) {
+        const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
+        setCurrentQuestion(randomQuestion);
       }
-    } else if (['cave', 'shipwreck'].includes(zoneId)) {
-      setTaskType('card');
     }
-  }, [zoneId, currentPlayer]);
+  }, [zoneId]);
 
   const handleQuestionAnswer = () => {
     if (selectedAnswer === null || !currentQuestion || !currentPlayer) return;
@@ -2027,61 +1784,31 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
     setIsAnswerCorrect(isCorrect);
     setShowResult(true);
 
-    // 记录回答过的问题
-    const originalIndex = (currentQuestion as any).originalIndex;
-    const answeredQuestions = currentPlayer.answeredQuestions[zoneId] || [];
-    const newAnsweredQuestions = [...answeredQuestions, originalIndex];
-
     if (isCorrect) {
       playSound('success');
-      
-      // 根据区域类型给予不同奖励
-      let coinReward = 0;
-      let shellReward = 0;
-      let scoreReward = 0;
-      
-      const baseScore = currentQuestion.difficulty === 'easy' ? 10 : 
-                       currentQuestion.difficulty === 'medium' ? 15 : 20;
-      
-      if (zoneId === 'coral') {
-        // 珊瑚礁：贝壳+分数
-        shellReward = currentQuestion.difficulty === 'easy' ? 1 : 
-                     currentQuestion.difficulty === 'medium' ? 2 : 3;
-        scoreReward = baseScore;
-      } else if (zoneId === 'volcano' || zoneId === 'kelp') {
-        // 火山温泉、海藻迷宫：海龟币+分数
-        coinReward = currentQuestion.difficulty === 'easy' ? 2 : 
-                    currentQuestion.difficulty === 'medium' ? 3 : 4;
-        scoreReward = baseScore;
-      }
-      
-      // 检查是否完成了该区域（回答3道题）
-      const zoneProgress = (currentPlayer.zoneProgress[zoneId] || 0) + 1;
-      const isZoneCompleted = zoneProgress >= 3;
+      const baseReward = currentQuestion.difficulty === 'easy' ? 1 : 
+                        currentQuestion.difficulty === 'medium' ? 2 : 3;
+      const bonusReward = Math.random() < 0.3 ? 1 : 0;
+      const totalReward = baseReward + bonusReward;
       
       updatePlayer(currentPlayer.id, {
-        coins: currentPlayer.coins + coinReward,
-        shells: currentPlayer.shells + shellReward,
-        totalScore: currentPlayer.totalScore + scoreReward,
+        coins: currentPlayer.coins + totalReward,
         actionChances: currentPlayer.actionChances - 1,
-        zoneProgress: { ...currentPlayer.zoneProgress, [zoneId]: zoneProgress },
-        answeredQuestions: { ...currentPlayer.answeredQuestions, [zoneId]: newAnsweredQuestions },
-        completedZones: isZoneCompleted && !currentPlayer.completedZones.includes(zoneId) ? 
-          [...currentPlayer.completedZones, zoneId] : currentPlayer.completedZones
+        completedZones: currentPlayer.completedZones.includes(zoneId) ? 
+          currentPlayer.completedZones : [...currentPlayer.completedZones, zoneId]
       });
       
       addLog(currentPlayer.id, {
         type: 'question',
         zone: zoneId,
         result: 'success',
-        reward: coinReward || shellReward,
-        description: `正确回答${currentQuestion.difficulty}难度问题，获得${scoreReward}分`
+        reward: totalReward,
+        description: `正确回答${currentQuestion.difficulty}难度问题`
       });
     } else {
       playSound('error');
       updatePlayer(currentPlayer.id, {
-        actionChances: currentPlayer.actionChances - 1,
-        answeredQuestions: { ...currentPlayer.answeredQuestions, [zoneId]: newAnsweredQuestions }
+        actionChances: currentPlayer.actionChances - 1
       });
       
       addLog(currentPlayer.id, {
@@ -2130,11 +1857,8 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
       default: playSound('reward'); break;
     }
 
-    // 卡牌奖励+固定分数
-    const scoreReward = 15;
     let updates: Partial<Player> = {
       actionChances: currentPlayer.actionChances - 1,
-      totalScore: currentPlayer.totalScore + scoreReward,
       completedZones: currentPlayer.completedZones.includes(zoneId) ? 
         currentPlayer.completedZones : [...currentPlayer.completedZones, zoneId]
     };
@@ -2167,7 +1891,7 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
       zone: zoneId,
       result: randomCard.type === 'skip' ? 'skip' : 'success',
       reward: randomCard.amount,
-      description: `抽取到${randomCard.rarity}卡牌：${randomCard.name}，获得${scoreReward}分`
+      description: `抽取到${randomCard.rarity}卡牌：${randomCard.name}`
     });
 
     setTimeout(() => {
@@ -2201,8 +1925,6 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
     >
       <FloatingParticles />
       <SoundToggle />
-      <PauseButton />
-      <PausedOverlay />
       
       <div className="bg-white/95 backdrop-blur rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative z-10">
         <div className="text-center mb-8">
@@ -2220,27 +1942,13 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
           <p className="text-gray-600 mb-4">{zone.description}</p>
           
           {/* 玩家信息 */}
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${playerColor?.gradient} text-white mb-4`}>
+          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${playerColor?.gradient} text-white`}>
             <span className="text-lg">🐢</span>
             <span className="font-semibold">{currentPlayer.name}</span>
           </div>
-          
-          {/* 区域进度显示 */}
-          {['coral', 'volcano', 'kelp'].includes(zoneId) && (
-            <div className="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-200">
-              <div className="text-sm text-blue-700 font-semibold">
-                📊 区域进度: {currentPlayer.zoneProgress[zoneId] || 0}/3 题目完成
-              </div>
-              {(currentPlayer.zoneProgress[zoneId] || 0) >= 3 && (
-                <div className="text-xs text-green-600 mt-1">
-                  ✅ 区域已完成！可重复挑战获得更多分数
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
-        {!showResult && taskType === 'question' && currentQuestion && !gameState.isPaused && (
+        {!showResult && taskType === 'question' && currentQuestion && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-200">
               <div className="flex items-center gap-2 mb-4">
@@ -2288,7 +1996,7 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
 
             <button
               onClick={handleQuestionAnswer}
-              disabled={selectedAnswer === null || gameState.isPaused}
+              disabled={selectedAnswer === null}
               className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
             >
               确认答案 ✨
@@ -2296,7 +2004,7 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
           </div>
         )}
 
-        {!showResult && taskType === 'card' && !gameState.isPaused && (
+        {!showResult && taskType === 'card' && (
           <div className="space-y-6 text-center">
             <div className="bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 p-8 rounded-2xl border border-purple-200">
               <motion.div
@@ -2323,48 +2031,10 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
 
             <button
               onClick={handleCardDraw}
-              disabled={gameState.isPaused}
-              className="w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-purple-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all"
             >
               抽取卡牌 ✨
             </button>
-          </div>
-        )}
-
-        {/* 暂停状态或没有可用问题时的提示 */}
-        {!showResult && taskType === 'question' && (gameState.isPaused || !currentQuestion) && (
-          <div className="text-center space-y-6">
-            <div className="bg-gray-50 p-8 rounded-2xl border border-gray-200">
-              {gameState.isPaused ? (
-                <>
-                  <div className="text-6xl mb-4">⏸️</div>
-                  <h3 className="text-2xl font-bold text-gray-700 mb-4">游戏已暂停</h3>
-                  <p className="text-gray-600">等待管理员恢复游戏...</p>
-                </>
-              ) : (
-                <>
-                  <div className="text-6xl mb-4">✅</div>
-                  <h3 className="text-2xl font-bold text-gray-700 mb-4">该区域题目已完成</h3>
-                  <p className="text-gray-600">你已经回答完了这个区域的所有题目！</p>
-                  <button
-                    onClick={() => updateGameState({ currentPage: 'map' })}
-                    className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-xl font-semibold"
-                  >
-                    返回地图
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!showResult && taskType === 'card' && gameState.isPaused && (
-          <div className="text-center space-y-6">
-            <div className="bg-gray-50 p-8 rounded-2xl border border-gray-200">
-              <div className="text-6xl mb-4">⏸️</div>
-              <h3 className="text-2xl font-bold text-gray-700 mb-4">游戏已暂停</h3>
-              <p className="text-gray-600">等待管理员恢复游戏...</p>
-            </div>
           </div>
         )}
 
@@ -2414,10 +2084,8 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
                     className="bg-yellow-100 p-4 rounded-xl border border-yellow-300"
                   >
                     <p className="text-yellow-700 font-bold text-lg">
-                      🎁 获得奖励：
-                      {zoneId === 'coral' && ` ${currentQuestion.difficulty === 'easy' ? '1' : currentQuestion.difficulty === 'medium' ? '2' : '3'} 个贝壳`}
-                      {(zoneId === 'volcano' || zoneId === 'kelp') && ` ${currentQuestion.difficulty === 'easy' ? '2' : currentQuestion.difficulty === 'medium' ? '3' : '4'} 个海龟币`}
-                      + {currentQuestion.difficulty === 'easy' ? '10' : currentQuestion.difficulty === 'medium' ? '15' : '20'} 分
+                      🎁 获得奖励：{currentQuestion.difficulty === 'easy' ? '1-2' : 
+                                    currentQuestion.difficulty === 'medium' ? '2-3' : '3-4'} 个海龟币
                     </p>
                   </motion.div>
                 )}
@@ -2470,7 +2138,7 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
                 
                 <div className="mt-4 p-3 bg-green-100 rounded-xl">
                   <p className="text-green-700 text-sm font-semibold">
-                    🎴 卡牌已添加到你的收藏中！获得15分！
+                    🎴 卡牌已添加到你的收藏中！
                   </p>
                 </div>
               </div>
@@ -2512,15 +2180,13 @@ const ZonePage: React.FC<{ zoneId: string }> = ({ zoneId }) => {
 
 const TemplePage: React.FC = () => {
   const { gameState, updateGameState, updatePlayer, playSound } = useGame();
-  const [currentPuzzleIndex, setCurrentPuzzleIndex] = useState(0);
-  const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [currentPuzzle, setCurrentPuzzle] = useState(0);
   const [answer, setAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
 
   const currentPlayer = gameState.currentPlayer ? gameState.players[gameState.currentPlayer] : null;
-  const puzzle = TEMPLE_PUZZLES[currentPuzzleIndex];
+  const puzzle = TEMPLE_PUZZLES[currentPuzzle];
 
   const handleSubmit = () => {
     if (!currentPlayer || !puzzle) return;
@@ -2535,58 +2201,34 @@ const TemplePage: React.FC = () => {
     setShowResult(true);
 
     if (correct) {
-      const newCorrectCount = correctAnswers + 1;
-      setCorrectAnswers(newCorrectCount);
+      playSound('victory');
       
-      if (newCorrectCount >= 3 || currentPuzzleIndex >= TEMPLE_PUZZLES.length - 1) {
-        // 完成所有题目或答对3题
-        playSound('victory');
-        
-        const winTime = Date.now();
-        const gameTime = winTime - gameState.gameStartTime;
-        
-        // 检查是否是第一个完成的玩家
-        if (!gameState.gameWinner) {
-          updateGameState({ 
-            gameWinner: currentPlayer.id,
-            winnerTime: gameTime
-          });
-          updatePlayer(currentPlayer.id, {
-            isWinner: true,
-            winTime: winTime,
-            coins: currentPlayer.coins + 50,
-            shells: currentPlayer.shells + 25,
-            totalScore: currentPlayer.totalScore + 100
-          });
-        } else {
-          // 不是第一个获胜，但仍然完成了挑战
-          updatePlayer(currentPlayer.id, {
-            isWinner: true,
-            winTime: winTime,
-            coins: currentPlayer.coins + 30,
-            shells: currentPlayer.shells + 15,
-            totalScore: currentPlayer.totalScore + 60
-          });
-        }
-        setIsComplete(true);
+      const winTime = Date.now();
+      const gameTime = winTime - gameState.gameStartTime;
+      
+      // 检查是否是第一个完成的玩家
+      if (!gameState.gameWinner) {
+        updateGameState({ 
+          gameWinner: currentPlayer.id,
+          winnerTime: gameTime
+        });
+        updatePlayer(currentPlayer.id, {
+          isWinner: true,
+          winTime: winTime,
+          coins: currentPlayer.coins + 20,
+          shells: currentPlayer.shells + 10
+        });
       } else {
-        // 继续下一题
-        playSound('success');
-        setTimeout(() => {
-          setCurrentPuzzleIndex(prev => prev + 1);
-          setAnswer('');
-          setShowResult(false);
-        }, 2000);
+        // 不是第一个获胜，但仍然完成了挑战
+        updatePlayer(currentPlayer.id, {
+          isWinner: true,
+          winTime: winTime,
+          coins: currentPlayer.coins + 10,
+          shells: currentPlayer.shells + 5
+        });
       }
     } else {
       playSound('error');
-      // 答错重新开始
-      setTimeout(() => {
-        setCurrentPuzzleIndex(0);
-        setCorrectAnswers(0);
-        setAnswer('');
-        setShowResult(false);
-      }, 3000);
     }
   };
 
@@ -2609,7 +2251,7 @@ const TemplePage: React.FC = () => {
   const playerColor = PLAYER_COLORS.find(c => c.id === currentPlayer.color);
 
   // 胜利页面
-  if (currentPlayer.isWinner || isComplete) {
+  if (currentPlayer.isWinner) {
     const isFirstWinner = gameState.gameWinner === currentPlayer.id;
     const winTime = currentPlayer.winTime ? formatTime(currentPlayer.winTime - gameState.gameStartTime) : '';
     
@@ -2716,8 +2358,6 @@ const TemplePage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-b from-yellow-300 via-orange-400 to-red-500 flex items-center justify-center p-4 relative overflow-hidden">
       <FloatingParticles />
       <SoundToggle />
-      <PauseButton />
-      <PausedOverlay />
       
       <div className="bg-white/95 backdrop-blur rounded-3xl p-8 max-w-2xl w-full shadow-2xl relative z-10">
         <div className="text-center mb-8">
@@ -2732,17 +2372,7 @@ const TemplePage: React.FC = () => {
             🏛️
           </motion.div>
           <h2 className="text-4xl font-bold text-yellow-600 mb-2">海龟神殿</h2>
-          <p className="text-gray-600 mb-4">连续答对3道终极谜题，获得海龟王之证！</p>
-          
-          {/* 进度显示 */}
-          <div className="mb-4 p-3 bg-yellow-50 rounded-xl border border-yellow-200">
-            <div className="text-lg font-bold text-yellow-700">
-              📊 进度: {correctAnswers}/3 题目正确
-            </div>
-            <div className="text-sm text-gray-600">
-              当前第 {currentPuzzleIndex + 1} 题
-            </div>
-          </div>
+          <p className="text-gray-600 mb-4">解答终极谜题，获得海龟王之证！</p>
           
           {/* 玩家信息 */}
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${playerColor?.gradient} text-white`}>
@@ -2760,13 +2390,13 @@ const TemplePage: React.FC = () => {
           )}
         </div>
 
-        {!showResult && puzzle && !isComplete && !gameState.isPaused && (
+        {!showResult && puzzle && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-yellow-50 to-orange-50 p-8 rounded-2xl border-2 border-yellow-300">
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-3xl">🤔</span>
                 <span className="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold">
-                  终极谜题 {currentPuzzleIndex + 1}/3
+                  终极谜题
                 </span>
               </div>
               
@@ -2780,7 +2410,7 @@ const TemplePage: React.FC = () => {
                 onChange={(e) => setAnswer(e.target.value)}
                 placeholder="请输入你的答案..."
                 className="w-full px-6 py-4 border-2 border-yellow-300 rounded-xl text-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 transition-all"
-                onKeyPress={(e) => e.key === 'Enter' && answer.trim() && !gameState.isPaused && handleSubmit()}
+                onKeyPress={(e) => e.key === 'Enter' && answer.trim() && handleSubmit()}
               />
               
               <p className="text-sm text-gray-500 mt-2">
@@ -2801,21 +2431,11 @@ const TemplePage: React.FC = () => {
               
               <button
                 onClick={handleSubmit}
-                disabled={!answer.trim() || gameState.isPaused}
+                disabled={!answer.trim()}
                 className="flex-2 py-4 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold text-lg disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all"
               >
                 提交答案 🔮
               </button>
-            </div>
-          </div>
-        )}
-
-        {!showResult && !isComplete && gameState.isPaused && (
-          <div className="text-center space-y-6">
-            <div className="bg-gray-50 p-8 rounded-2xl border border-gray-200">
-              <div className="text-6xl mb-4">⏸️</div>
-              <h3 className="text-2xl font-bold text-gray-700 mb-4">游戏已暂停</h3>
-              <p className="text-gray-600">等待管理员恢复游戏...</p>
             </div>
           </div>
         )}
@@ -2857,15 +2477,9 @@ const TemplePage: React.FC = () => {
                 </p>
               </div>
               
-              {isCorrect && correctAnswers >= 3 && (
+              {isCorrect && (
                 <p className="text-green-600 font-semibold text-lg">
                   🏆 恭喜！你获得了海龟王之证！
-                </p>
-              )}
-              
-              {!isCorrect && (
-                <p className="text-red-600 font-semibold text-lg">
-                  💔 重新开始挑战...
                 </p>
               )}
             </div>
