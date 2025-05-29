@@ -644,7 +644,7 @@ const formatTime = (milliseconds: number): string => {
 const GameContext = createContext<{
   gameState: GameState;
   updateGameState: (updates: Partial<GameState>) => void;
-  addPlayer: (player: Omit<Player, 'id' | 'totalScore' | 'lastActive' | 'isWinner' | 'winTime' | 'collectedCards'>) => void;
+  addPlayer: (player: { name: string; color: string }) => string;
   updatePlayer: (playerId: string, updates: Partial<Player>) => void;
   addLog: (playerId: string, log: Omit<GameLog, 'timestamp'>) => void;
   addCard: (playerId: string, card: Omit<CollectedCard, 'timestamp'>) => void;
@@ -676,8 +676,7 @@ const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setGameState(prev => ({ ...prev, ...updates }));
   };
 
-  
-  const addPlayer = (playerData: { name: string; color: string }) => {
+  const addPlayer = (playerData: { name: string; color: string }): string => {
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newPlayer: Player = {
       ...playerData,
