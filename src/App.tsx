@@ -1,4 +1,4 @@
-import React, { useState, useEffect, createContext, useContext, useRef, useMemo } from 'react';
+import React, { useState, useEffect, createContext, useContext, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ========== 类型定义 ==========
@@ -676,7 +676,8 @@ const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
     setGameState(prev => ({ ...prev, ...updates }));
   };
 
-  const addPlayer = (playerData: Omit<Player, 'id' | 'totalScore' | 'lastActive' | 'isWinner' | 'winTime' | 'collectedCards'>) => {
+  
+  const addPlayer = (playerData: { name: string; color: string }) => {
     const playerId = `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const newPlayer: Player = {
       ...playerData,
@@ -1056,19 +1057,19 @@ const CardCollection: React.FC<{ playerId: string }> = ({ playerId }) => {
                   const cards = cardsByRarity[rarity];
                   if (!cards || cards.length === 0) return null;
                   
-                  const rarityColors = {
-                    legendary: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-                    epic: 'text-purple-600 bg-purple-50 border-purple-200',
-                    rare: 'text-blue-600 bg-blue-50 border-blue-200',
-                    common: 'text-gray-600 bg-gray-50 border-gray-200'
-                  };
-                  
-                  const rarityNames = {
-                    legendary: '传说',
-                    epic: '史诗',
-                    rare: '稀有',
-                    common: '普通'
-                  };
+                  const rarityColors: Record<string, string> = {
+  legendary: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+  epic: 'text-purple-600 bg-purple-50 border-purple-200',
+  rare: 'text-blue-600 bg-blue-50 border-blue-200',
+  common: 'text-gray-600 bg-gray-50 border-gray-200'
+};
+
+const rarityNames: Record<string, string> = {
+  legendary: '传说',
+  epic: '史诗',
+  rare: '稀有',
+  common: '普通'
+};
                   
                   return (
                     <div key={rarity}>
